@@ -185,15 +185,19 @@ export function useCustomChat({ model, reasoning, agents, historyLimit = 6 }: Us
               const content =
                 chunk.choices[0]?.delta?.content || chunk.choices[0]?.message?.content;
               const reasoningDelta = chunk.choices[0]?.delta?.reasoning?.thinking;
-              const toolCallsDelta = chunk.choices[0]?.delta?.tool_calls || chunk.choices[0]?.message?.tool_calls;
+              const toolCallsDelta =
+                chunk.choices[0]?.delta?.tool_calls || chunk.choices[0]?.message?.tool_calls;
 
               console.log('Chunk received:', {
-                content: content !== undefined ? 'present' : 'absent',
+                content: content !== null && content !== undefined ? 'present' : 'absent',
                 reasoning: reasoningDelta !== undefined ? 'present' : 'absent',
-                toolCalls: toolCallsDelta !== undefined ? toolCallsDelta : 'absent'
+                toolCalls: toolCallsDelta !== undefined ? toolCallsDelta : 'absent',
               });
 
               if (content !== null && content !== undefined) {
+                if (accumulatedContent && !accumulatedContent.endsWith('\n')) {
+                  accumulatedContent += '\n';
+                }
                 accumulatedContent += content;
               }
 
@@ -205,13 +209,14 @@ export function useCustomChat({ model, reasoning, agents, historyLimit = 6 }: Us
                 hasToolCalls = true;
                 // Only add new tool calls that aren't already in the accumulated list
                 const newToolCalls = toolCallsDelta.filter(
-                  newTool => !accumulatedToolCalls.some(existingTool => existingTool.id === newTool.id)
+                  newTool =>
+                    !accumulatedToolCalls.some(existingTool => existingTool.id === newTool.id)
                 );
                 accumulatedToolCalls = [...accumulatedToolCalls, ...newToolCalls];
                 console.log('Tool calls state:', {
                   hasToolCalls,
                   accumulatedToolCalls,
-                  newToolCallsCount: newToolCalls.length
+                  newToolCallsCount: newToolCalls.length,
                 });
               }
 
@@ -227,7 +232,7 @@ export function useCustomChat({ model, reasoning, agents, historyLimit = 6 }: Us
                   hasContent: !!lastMessage.content,
                   hasReasoning: !!lastMessage.reasoning,
                   hasToolCalls: !!lastMessage.tool_calls,
-                  toolCallsCount: lastMessage.tool_calls?.length
+                  toolCallsCount: lastMessage.tool_calls?.length,
                 });
                 newMessages[newMessages.length - 1] = lastMessage;
                 return newMessages;

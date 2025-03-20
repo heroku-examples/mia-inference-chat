@@ -208,30 +208,65 @@ const Chat: React.FC = () => {
                 {message.role === 'assistant' ? (
                   <div className="flex flex-col max-w-[85%] text-base">
                     {message.tool_calls && message.tool_calls.length > 0 && (
-                      <div className="mb-3 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-700 px-4 py-2 bg-gray-100 border-b border-gray-200">
+                      <div className="mb-3">
+                        <button
+                          onClick={() => toggleToolCall(message.tool_calls![0].id)}
+                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                        >
                           🔧 Tool Execution
-                        </div>
-                        <div className="p-4 space-y-4">
-                          {message.tool_calls.map((tool, index) => {
-                            let args;
-                            try {
-                              args = JSON.parse(tool.function.arguments);
-                            } catch (e) {
-                              args = tool.function.arguments;
-                            }
-                            return (
-                              <div key={tool.id} className={index > 0 ? 'pt-4 border-t border-gray-200' : ''}>
-                                <div className="font-medium text-gray-700 mb-2">{tool.function.name}</div>
-                                <div className="bg-white rounded border border-gray-200">
-                                  <pre className="p-3 overflow-x-auto whitespace-pre text-sm">
-                                    <code>{typeof args === 'string' ? args : JSON.stringify(args, null, 2)}</code>
-                                  </pre>
+                        </button>
+                        {expandedToolCalls.has(message.tool_calls[0].id) && (
+                          <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            {message.tool_calls.map((tool, index) => {
+                              let args;
+                              try {
+                                args = JSON.parse(tool.function.arguments);
+                              } catch (e) {
+                                args = tool.function.arguments;
+                              }
+
+                              // Extract code from arguments if present
+                              const codeContent =
+                                typeof args === 'object' && args.code ? args.code : null;
+                              const otherArgs =
+                                typeof args === 'object' && args.code
+                                  ? { ...args, code: '[shown below]' }
+                                  : args;
+
+                              return (
+                                <div
+                                  key={tool.id}
+                                  className={index > 0 ? 'mt-4 pt-4 border-t border-gray-200' : ''}
+                                >
+                                  <div className="font-medium text-gray-700 mb-2">
+                                    {tool.function.name}
+                                  </div>
+                                  <div className="bg-white rounded border border-gray-200">
+                                    <pre className="p-3 overflow-x-auto whitespace-pre text-sm">
+                                      <code>
+                                        {typeof otherArgs === 'string'
+                                          ? otherArgs
+                                          : JSON.stringify(otherArgs, null, 2)}
+                                      </code>
+                                    </pre>
+                                  </div>
+                                  {codeContent && (
+                                    <div className="mt-3">
+                                      <div className="font-medium text-gray-700 mb-2">Code:</div>
+                                      <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeRaw]}
+                                        components={markdownComponents}
+                                      >
+                                        {'```python\n' + codeContent + '\n```'}
+                                      </ReactMarkdown>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
                     {message.reasoning && (
@@ -242,8 +277,14 @@ const Chat: React.FC = () => {
                         >
                           Reasoning
                         </button>
-                        <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100 whitespace-pre-wrap">
-                          {message.reasoning.thinking}
+                        <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeRaw]}
+                            components={markdownComponents}
+                          >
+                            {message.reasoning.thinking}
+                          </ReactMarkdown>
                         </div>
                       </div>
                     )}
