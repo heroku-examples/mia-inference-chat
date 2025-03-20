@@ -1,3 +1,4 @@
+import { AgentType } from '@/types/chat';
 import React, { useRef, useState } from 'react';
 
 export type ModelType = 'claude-3-7-sonnet' | 'claude-3-5-sonnet-latest';
@@ -9,6 +10,14 @@ export interface Message {
   reasoning?: {
     thinking: string;
   };
+  tool_calls?: {
+    id: string;
+    type: string;
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }[];
 }
 
 export interface ChatError {
@@ -25,7 +34,33 @@ interface StreamChunk {
   choices: {
     delta: {
       content: string | null;
-      tool_calls: null;
+      tool_calls:
+        | {
+            id: string;
+            type: string;
+            function: {
+              name: string;
+              arguments: string;
+            };
+          }[]
+        | null;
+      role: string;
+      reasoning?: {
+        thinking: string;
+      };
+    };
+    message: {
+      content: string;
+      tool_calls:
+        | {
+            id: string;
+            type: string;
+            function: {
+              name: string;
+              arguments: string;
+            };
+          }[]
+        | null;
       role: string;
       reasoning?: {
         thinking: string;
@@ -44,10 +79,11 @@ interface StreamChunk {
 interface UseCustomChatProps {
   model: ModelType;
   reasoning: boolean;
+  agents: AgentType[];
   historyLimit?: number;
 }
 
-export function useCustomChat({ model, reasoning, historyLimit = 6 }: UseCustomChatProps) {
+export function useCustomChat({ model, reasoning, agents, historyLimit = 6 }: UseCustomChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [error, setError] = useState<ChatError | null>(null);
@@ -96,12 +132,16 @@ export function useCustomChat({ model, reasoning, historyLimit = 6 }: UseCustomC
           messages: recentMessages,
           model,
           reasoning,
+          agents,
         }),
         signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(
+          errorData.details || errorData.error || `Request failed with status ${response.status}`
+        );
       }
 
       if (!response.body) {
@@ -112,11 +152,14 @@ export function useCustomChat({ model, reasoning, historyLimit = 6 }: UseCustomC
       const decoder = new TextDecoder();
       let accumulatedContent = '';
       let accumulatedReasoning = '';
+      let accumulatedToolCalls: NonNullable<Message['tool_calls']> = [];
+      let hasToolCalls = false;
 
       const assistantMessage: Message = {
         role: 'assistant',
         content: '',
         reasoning: reasoning ? { thinking: '' } : undefined,
+        tool_calls: undefined,
       };
       setMessages(prev => [...prev, assistantMessage]);
 
@@ -139,8 +182,16 @@ export function useCustomChat({ model, reasoning, historyLimit = 6 }: UseCustomC
 
             try {
               const chunk: StreamChunk = JSON.parse(data);
-              const content = chunk.choices[0]?.delta?.content;
+              const content =
+                chunk.choices[0]?.delta?.content || chunk.choices[0]?.message?.content;
               const reasoningDelta = chunk.choices[0]?.delta?.reasoning?.thinking;
+              const toolCallsDelta = chunk.choices[0]?.delta?.tool_calls || chunk.choices[0]?.message?.tool_calls;
+
+              console.log('Chunk received:', {
+                content: content !== undefined ? 'present' : 'absent',
+                reasoning: reasoningDelta !== undefined ? 'present' : 'absent',
+                toolCalls: toolCallsDelta !== undefined ? toolCallsDelta : 'absent'
+              });
 
               if (content !== null && content !== undefined) {
                 accumulatedContent += content;
@@ -150,13 +201,35 @@ export function useCustomChat({ model, reasoning, historyLimit = 6 }: UseCustomC
                 accumulatedReasoning += reasoningDelta;
               }
 
+              if (toolCallsDelta !== null && toolCallsDelta !== undefined) {
+                hasToolCalls = true;
+                // Only add new tool calls that aren't already in the accumulated list
+                const newToolCalls = toolCallsDelta.filter(
+                  newTool => !accumulatedToolCalls.some(existingTool => existingTool.id === newTool.id)
+                );
+                accumulatedToolCalls = [...accumulatedToolCalls, ...newToolCalls];
+                console.log('Tool calls state:', {
+                  hasToolCalls,
+                  accumulatedToolCalls,
+                  newToolCallsCount: newToolCalls.length
+                });
+              }
+
               setMessages(prev => {
                 const newMessages = [...prev];
-                newMessages[newMessages.length - 1] = {
+                const lastMessage: Message = {
                   role: 'assistant',
                   content: accumulatedContent,
                   reasoning: reasoning ? { thinking: accumulatedReasoning } : undefined,
+                  tool_calls: hasToolCalls ? accumulatedToolCalls : undefined,
                 };
+                console.log('Updating message:', {
+                  hasContent: !!lastMessage.content,
+                  hasReasoning: !!lastMessage.reasoning,
+                  hasToolCalls: !!lastMessage.tool_calls,
+                  toolCallsCount: lastMessage.tool_calls?.length
+                });
+                newMessages[newMessages.length - 1] = lastMessage;
                 return newMessages;
               });
             } catch (e) {

@@ -8,6 +8,24 @@
   "scripts": {
     "postdeploy": "pnpm build"
   },
+  "env": {
+    "PYTHON_RUNNER": {
+      "description": "The name of the Code Execution Runner app for Python",
+      "required": false
+    },
+    "RUBY_RUNNER": {
+      "description": "The name of the Code Execution Runner app for Ruby",
+      "required": false
+    },
+    "NODE_RUNNER": {
+      "description": "The name of the Code Execution Runner app for Node.js",
+      "required": false
+    },
+    "GO_RUNNER": {
+      "description": "The name of the Code Execution Runner app for Go",
+      "required": false
+    }
+  },
   "addons": [
     {
       "plan": "heroku-inference:claude-3-7-sonnet",

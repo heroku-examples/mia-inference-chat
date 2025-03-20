@@ -1,20 +1,14 @@
-import type { ComponentPropsWithoutRef } from 'react';
 import React, { useEffect, useRef, useState } from 'react';
-import { CheckIcon, ClipboardIcon } from '@heroicons/react/24/outline';
-import {
-  PaperAirplaneIcon,
-  StopIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-} from '@heroicons/react/24/solid';
+import { PaperAirplaneIcon, StopIcon } from '@heroicons/react/24/solid';
 import clsx from 'clsx';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
 import ReactMarkdown, { Components } from 'react-markdown';
-import SyntaxHighlighter from 'react-syntax-highlighter';
-import { atomOneDark } from 'react-syntax-highlighter/dist/cjs/styles/hljs';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import { LoadingDots } from '@/components/LoadingDots';
+import { CodeBlock } from '@/components/CodeBlock';
+import { AgentToggle } from '@/components/AgentToggle';
+import { AGENTS } from '@/constants/agents';
+import type { AgentType } from '@/types/chat';
 import { type Message, type ModelType, useCustomChat } from '@/hooks/useCustomChat';
 
 const MODELS: { id: ModelType; name: string }[] = [
@@ -22,158 +16,114 @@ const MODELS: { id: ModelType; name: string }[] = [
   { id: 'claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet' },
 ];
 
-const CodeBlock = (props: ComponentPropsWithoutRef<'code'>) => {
-  const { className, children, ...rest } = props;
-  const match = /language-(\w+)/.exec(className || '');
-  const language = match ? match[1] : '';
-  const isInline = !match;
-  const [isCopied, setIsCopied] = useState(false);
-
-  const handleCopy = () => {
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
-  };
-
-  return isInline ? (
-    <code
-      className="bg-gray-100 dark:bg-gray-700 rounded px-1 py-0.5 text-gray-800 dark:text-gray-200"
-      {...rest}
-    >
-      {children}
-    </code>
-  ) : (
-    <div className="relative group rounded-lg overflow-hidden">
-      <div className="absolute right-2 top-2 z-10">
-        <CopyToClipboard text={String(children)} onCopy={handleCopy}>
-          <button
-            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-            title={isCopied ? 'Copied!' : 'Copy code'}
-          >
-            {isCopied ? (
-              <CheckIcon className="h-5 w-5 text-green-500" />
-            ) : (
-              <ClipboardIcon className="h-5 w-5 text-gray-400 group-hover:text-gray-300" />
-            )}
-          </button>
-        </CopyToClipboard>
-      </div>
-      <div className="!mt-0">
-        <SyntaxHighlighter
-          language={language || 'text'}
-          style={atomOneDark}
-          customStyle={{
-            margin: 0,
-            padding: '1rem',
-            borderRadius: '0.5rem',
-          }}
-        >
-          {String(children).replace(/\n$/, '')}
-        </SyntaxHighlighter>
-      </div>
-    </div>
-  );
-};
-
-const ReasoningBlock: React.FC<{ thinking: string }> = ({ thinking }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  return (
-    <div className="mb-3">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-      >
-        {isExpanded ? (
-          <ChevronUpIcon className="h-4 w-4" />
-        ) : (
-          <ChevronDownIcon className="h-4 w-4" />
-        )}
-        Reasoning
-      </button>
-      {isExpanded && (
-        <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100 whitespace-pre-wrap">
-          {thinking}
-        </div>
-      )}
-    </div>
-  );
-};
-
 const markdownComponents: Components = {
   code: CodeBlock,
-  p(props) {
-    return <p className="mb-3 last:mb-0 text-gray-800" {...props} />;
-  },
-  ul(props) {
-    return <ul className="list-disc list-inside mb-3 text-gray-800" {...props} />;
-  },
-  ol(props) {
-    return <ol className="list-decimal list-inside mb-3 text-gray-800" {...props} />;
-  },
-  li(props) {
-    return <li className="mb-1 text-gray-800" {...props} />;
-  },
-  a({ href, ...props }: ComponentPropsWithoutRef<'a'>) {
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-blue-600 hover:underline"
-        {...props}
-      />
-    );
-  },
-  blockquote(props) {
-    return (
-      <blockquote
-        className="border-l-2 border-gray-300 pl-4 italic my-3 text-gray-700"
-        {...props}
-      />
-    );
-  },
-  h1(props) {
-    return <h1 className="text-xl font-semibold mb-3 text-gray-900" {...props} />;
-  },
-  h2(props) {
-    return <h2 className="text-lg font-semibold mb-2 text-gray-900" {...props} />;
-  },
-  h3(props) {
-    return <h3 className="text-base font-semibold mb-2 text-gray-900" {...props} />;
-  },
-  table(props) {
-    return (
-      <div className="my-4 overflow-x-auto">
-        <table className="min-w-full border-collapse text-sm" {...props} />
-      </div>
-    );
-  },
-  thead(props) {
-    return <thead className="bg-gray-50" {...props} />;
-  },
-  tbody(props) {
-    return <tbody className="bg-white divide-y divide-gray-100" {...props} />;
-  },
-  tr(props) {
-    return <tr className="border-b border-gray-100 last:border-0" {...props} />;
-  },
-  th(props) {
-    return (
-      <th
-        className="px-4 py-3 text-left text-gray-700 font-semibold border-b border-gray-200"
-        {...props}
-      />
-    );
-  },
-  td(props) {
-    return <td className="px-4 py-3 text-gray-800" {...props} />;
-  },
+  p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
+    <p className="mb-3 last:mb-0 text-gray-800" {...props}>
+      {children}
+    </p>
+  ),
+  ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
+    <ul className="list-disc list-inside mb-3 text-gray-800" {...props}>
+      {children}
+    </ul>
+  ),
+  ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
+    <ol className="list-decimal list-inside mb-3 text-gray-800" {...props}>
+      {children}
+    </ol>
+  ),
+  li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
+    <li className="mb-1 text-gray-800" {...props}>
+      {children}
+    </li>
+  ),
+  a: ({ href, children, ...props }: React.ComponentPropsWithoutRef<'a'>) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 hover:underline"
+      {...props}
+    >
+      {children}
+    </a>
+  ),
+  blockquote: ({ children, ...props }: React.ComponentPropsWithoutRef<'blockquote'>) => (
+    <blockquote className="border-l-2 border-gray-300 pl-4 italic my-3 text-gray-700" {...props}>
+      {children}
+    </blockquote>
+  ),
+  h1: ({ children, ...props }: React.ComponentPropsWithoutRef<'h1'>) => (
+    <h1 className="text-xl font-semibold mb-3 text-gray-900" {...props}>
+      {children}
+    </h1>
+  ),
+  h2: ({ children, ...props }: React.ComponentPropsWithoutRef<'h2'>) => (
+    <h2 className="text-lg font-semibold mb-2 text-gray-900" {...props}>
+      {children}
+    </h2>
+  ),
+  h3: ({ children, ...props }: React.ComponentPropsWithoutRef<'h3'>) => (
+    <h3 className="text-base font-semibold mb-2 text-gray-900" {...props}>
+      {children}
+    </h3>
+  ),
+  table: ({ children, ...props }: React.ComponentPropsWithoutRef<'table'>) => (
+    <div className="my-4 overflow-x-auto">
+      <table className="min-w-full border-collapse text-sm" {...props}>
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children, ...props }: React.ComponentPropsWithoutRef<'thead'>) => (
+    <thead className="bg-gray-50" {...props}>
+      {children}
+    </thead>
+  ),
+  tbody: ({ children, ...props }: React.ComponentPropsWithoutRef<'tbody'>) => (
+    <tbody className="bg-white divide-y divide-gray-100" {...props}>
+      {children}
+    </tbody>
+  ),
+  tr: ({ children, ...props }: React.ComponentPropsWithoutRef<'tr'>) => (
+    <tr className="border-b border-gray-100 last:border-0" {...props}>
+      {children}
+    </tr>
+  ),
+  th: ({ children, ...props }: React.ComponentPropsWithoutRef<'th'>) => (
+    <th
+      className="px-4 py-3 text-left text-gray-700 font-semibold border-b border-gray-200"
+      {...props}
+    >
+      {children}
+    </th>
+  ),
+  td: ({ children, ...props }: React.ComponentPropsWithoutRef<'td'>) => (
+    <td className="px-4 py-3 text-gray-800" {...props}>
+      {children}
+    </td>
+  ),
 };
 
 const Chat: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<ModelType>('claude-3-7-sonnet');
   const [useReasoning, setUseReasoning] = useState(false);
+  const [selectedAgents, setSelectedAgents] = useState<AgentType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [expandedToolCalls, setExpandedToolCalls] = useState<Set<string>>(new Set());
+
+  const toggleToolCall = (id: string) => {
+    setExpandedToolCalls(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
 
   const {
     messages,
@@ -188,44 +138,38 @@ const Chat: React.FC = () => {
   } = useCustomChat({
     model: selectedModel,
     reasoning: useReasoning,
+    agents: selectedAgents,
   });
 
-  // Add effect to handle reasoning state based on model selection
   useEffect(() => {
     if (selectedModel === 'claude-3-5-sonnet-latest') {
       setUseReasoning(false);
     }
   }, [selectedModel]);
 
-  // Update isLoading state based on status
   useEffect(() => {
     setIsLoading(status === 'loading');
   }, [status]);
 
-  // Add refs for DOM elements
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Focus input after loading
   useEffect(() => {
     if (!isLoading) {
       inputRef.current?.focus();
     }
   }, [isLoading]);
 
-  // Clear chat history
   const handleClear = () => {
     setMessages([]);
   };
 
-  // Retry last message
   const handleRetry = () => {
     if (status === 'error') {
       void reload();
     }
   };
 
-  // Remove standalone scrollToBottom function
   useEffect(() => {
     const scrollToBottom = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -238,7 +182,7 @@ const Chat: React.FC = () => {
       <div
         className={clsx(
           'w-full transition-all duration-500 ease-in-out',
-          messages.length === 0 ? 'max-w-2xl h-[400px]' : 'max-w-4xl h-full'
+          messages.length === 0 ? 'max-w-3xl h-[400px]' : 'max-w-5xl h-full'
         )}
       >
         <div className="bg-white rounded-xl shadow-lg w-full h-full flex flex-col overflow-hidden">
@@ -250,7 +194,7 @@ const Chat: React.FC = () => {
           >
             {messages.length === 0 && !isLoading && (
               <div className="text-center text-gray-500 w-full">
-                Start a conversation by typing a message below.
+                Start a conversation with MIA by asking a question below.
               </div>
             )}
             {messages.map((message: Message) => (
@@ -263,7 +207,46 @@ const Chat: React.FC = () => {
               >
                 {message.role === 'assistant' ? (
                   <div className="flex flex-col max-w-[85%] text-base">
-                    {message.reasoning && <ReasoningBlock thinking={message.reasoning.thinking} />}
+                    {message.tool_calls && message.tool_calls.length > 0 && (
+                      <div className="mb-3 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                        <div className="flex items-center gap-2 text-sm font-medium text-gray-700 px-4 py-2 bg-gray-100 border-b border-gray-200">
+                          🔧 Tool Execution
+                        </div>
+                        <div className="p-4 space-y-4">
+                          {message.tool_calls.map((tool, index) => {
+                            let args;
+                            try {
+                              args = JSON.parse(tool.function.arguments);
+                            } catch (e) {
+                              args = tool.function.arguments;
+                            }
+                            return (
+                              <div key={tool.id} className={index > 0 ? 'pt-4 border-t border-gray-200' : ''}>
+                                <div className="font-medium text-gray-700 mb-2">{tool.function.name}</div>
+                                <div className="bg-white rounded border border-gray-200">
+                                  <pre className="p-3 overflow-x-auto whitespace-pre text-sm">
+                                    <code>{typeof args === 'string' ? args : JSON.stringify(args, null, 2)}</code>
+                                  </pre>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {message.reasoning && (
+                      <div className="mb-3">
+                        <button
+                          onClick={() => setUseReasoning(!useReasoning)}
+                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                        >
+                          Reasoning
+                        </button>
+                        <div className="mt-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100 whitespace-pre-wrap">
+                          {message.reasoning.thinking}
+                        </div>
+                      </div>
+                    )}
                     <div className="text-gray-800">
                       {/[*#\[\]_`]/.test(message.content) || message.content.includes('\n\n') ? (
                         <ReactMarkdown
@@ -347,13 +330,13 @@ const Chat: React.FC = () => {
                   type="submit"
                   disabled={!input.trim()}
                   className="rounded-xl bg-heroku-purple p-3 text-white hover:bg-heroku-dark focus:outline-none focus:ring-2 focus:ring-heroku-purple disabled:opacity-50"
-                  title="Send message"
+                  title="Ask me anything..."
                 >
                   <PaperAirplaneIcon className="h-5 w-5" />
                 </button>
               )}
             </form>
-            <div className="flex items-center gap-4 justify-between text-sm text-gray-500">
+            <div className="flex items-center gap-4 justify-between text-xs text-gray-500">
               <button
                 type="button"
                 onClick={handleClear}
@@ -362,29 +345,51 @@ const Chat: React.FC = () => {
               >
                 Clear Chat
               </button>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={useReasoning}
-                    onChange={e => setUseReasoning(e.target.checked)}
-                    className="rounded border-gray-300 text-heroku-purple focus:ring-heroku-purple"
-                    disabled={isLoading || selectedModel !== 'claude-3-7-sonnet'}
-                  />
-                  <span className="font-medium">Reasoning</span>
-                </label>
-                <select
-                  value={selectedModel}
-                  onChange={e => setSelectedModel(e.target.value as ModelType)}
-                  className="rounded-md border-gray-300 shadow-sm focus:border-heroku-purple focus:ring-heroku-purple bg-transparent"
-                  disabled={isLoading}
-                >
-                  {MODELS.map(model => (
-                    <option key={model.id} value={model.id}>
-                      {model.name}
-                    </option>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-1.5 justify-end">
+                  {AGENTS.map(agent => (
+                    <AgentToggle
+                      key={agent.id}
+                      agent={agent}
+                      isSelected={selectedAgents.includes(agent.id)}
+                      onToggle={() => {
+                        setSelectedAgents(prev =>
+                          prev.includes(agent.id)
+                            ? prev.filter(id => id !== agent.id)
+                            : [...prev, agent.id]
+                        );
+                      }}
+                      disabled={isLoading}
+                    />
                   ))}
-                </select>
+                </div>
+                <div className="flex items-center gap-3 justify-end">
+                  <label className="inline-flex items-center cursor-pointer">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={useReasoning}
+                        onChange={e => setUseReasoning(e.target.checked)}
+                        disabled={isLoading || selectedModel !== 'claude-3-7-sonnet'}
+                      />
+                      <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-heroku-purple"></div>
+                    </div>
+                    <span className="ml-2 text-xs font-medium">Reasoning</span>
+                  </label>
+                  <select
+                    value={selectedModel}
+                    onChange={e => setSelectedModel(e.target.value as ModelType)}
+                    className="text-xs rounded-md border-gray-300 shadow-sm focus:border-heroku-purple focus:ring-heroku-purple bg-transparent py-1 pl-2 pr-8"
+                    disabled={isLoading}
+                  >
+                    {MODELS.map(model => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </div>

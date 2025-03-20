@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import fastifyCors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
-import { chatHandler } from './routes/chat.js';
+import { chatRoute } from './routes/chat.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,7 +30,7 @@ fastify.register(fastifyStatic, {
 });
 
 // Register chat route
-fastify.post('/api/chat', chatHandler);
+fastify.register(chatRoute);
 
 // Run the server
 const start = async () => {
