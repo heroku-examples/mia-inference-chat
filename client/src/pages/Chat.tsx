@@ -18,7 +18,7 @@ import { markdownComponents } from '../constants/markdownComponents';
 const MODELS: { id: ModelType; name: string }[] = [
   { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet' },
   { id: 'claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet' },
-  { id: 'stable-image-ultra', name: 'Stability Image Ultra' },
+  { id: 'stable-image-ultra', name: 'Stable Image Ultra' },
 ];
 
 const ASPECT_RATIOS = [

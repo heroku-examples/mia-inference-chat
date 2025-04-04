@@ -7,61 +7,83 @@ application.
 
 ```mermaid
 classDiagram
-    class ChatMessage {
-        +role: 'system' | 'user' | 'assistant'
+    class Message {
+        +role: 'user' | 'assistant' | 'agent'
         +content: string
+        +type?: 'text' | 'image'
+        +image_url?: string
+        +reasoning?: ReasoningInfo
+        +tool_calls?: ToolCall[]
+        +is_tool_message?: boolean
     }
 
-    class ChatRequest {
-        +messages: ChatMessage[]
-        +model: string
-        +reasoning?: boolean
-        +agents?: string[]
-        +stream?: boolean
+    class ReasoningInfo {
+        +thinking: string
     }
 
-    class ModelRequestBody {
-        +model: string
-        +messages: ChatMessage[]
-        +stream?: boolean
-        +tools?: ToolConfig[]
-        +tool_choice?: string
-        +extended_thinking?: ExtendedThinking
-    }
-
-    class ToolConfig {
+    class ToolCall {
+        +id: string
         +type: string
-        +function: FunctionConfig
+        +function: FunctionInfo
     }
 
-    class FunctionConfig {
+    class FunctionInfo {
         +name: string
+        +arguments: string
     }
 
-    class ExtendedThinking {
-        +enabled: boolean
-        +budget_tokens: number
-        +include_reasoning: boolean
+    class ImageGenerationParams {
+        +model: 'stable-image-ultra'
+        +prompt: string
+        +size: string
+        +negative_prompt?: string
+        +seed?: number
     }
 
-    class ModelConfig {
-        +INFERENCE_URL: string
-        +API_KEY: string
+    class ImageGenerationResponse {
+        +data: ImageData[]
     }
 
-    class ErrorResponse {
-        +code: number
-        +error: string
-        +expiresIn?: number
+    class ImageData {
+        +b64_json: string
+        +revised_prompt: string
+    }
+
+    class ChatError {
         +message: string
-        +details?: string
+        +code?: string
     }
 
-    ChatRequest --> ChatMessage : contains[]
-    ModelRequestBody --> ChatMessage : contains[]
-    ModelRequestBody --> ToolConfig : optional[]
-    ToolConfig --> FunctionConfig : has
-    ModelRequestBody --> ExtendedThinking : optional
+    class StreamChunk {
+        +id: string
+        +object: string
+        +created: number
+        +model: string
+        +system_fingerprint: string
+        +choices: Choice[]
+        +usage?: UsageInfo
+    }
+
+    class Choice {
+        +delta: DeltaInfo
+        +message: MessageInfo
+        +finish_reason: string
+        +index: number
+    }
+
+    class UsageInfo {
+        +prompt_tokens: number
+        +completion_tokens: number
+        +total_tokens: number
+    }
+
+    Message --> ReasoningInfo : optional
+    Message --> ToolCall : optional[]
+    ToolCall --> FunctionInfo : has
+    ImageGenerationResponse --> ImageData : contains[]
+    StreamChunk --> Choice : contains[]
+    Choice --> DeltaInfo : has
+    Choice --> MessageInfo : has
 ```
 
 ## Type Usage Flow
@@ -70,60 +92,70 @@ classDiagram
 graph TB
     subgraph Client
         ClientReq[Client Request]
+        ImageReq[Image Request]
     end
 
     subgraph Server Types
-        ChatReq[ChatRequest]
-        ChatMsg[ChatMessage]
-        ModelReq[ModelRequestBody]
-        ErrRes[ErrorResponse]
-        ModConfig[ModelConfig]
+        Message[Message]
+        ImgParams[ImageGenerationParams]
+        ImgRes[ImageGenerationResponse]
+        StreamRes[StreamChunk]
+        ErrRes[ChatError]
     end
 
     subgraph External API
-        APIReq[API Request]
-        APIRes[API Response]
+        ChatAPI[Chat API]
+        ImageAPI[Image API]
     end
 
-    ClientReq -->|Validated as| ChatReq
-    ChatReq -->|Contains| ChatMsg
-    ChatReq -->|Transformed to| ModelReq
-    ModelReq -->|Sent as| APIReq
-    APIRes -->|May result in| ErrRes
-    ModConfig -->|Configures| APIReq
+    ClientReq -->|Validated as| Message
+    ImageReq -->|Validated as| ImgParams
+    Message -->|Sent to| ChatAPI
+    ImgParams -->|Sent to| ImageAPI
+    ChatAPI -->|Streams| StreamRes
+    ImageAPI -->|Returns| ImgRes
+    ChatAPI -->|May result in| ErrRes
+    ImageAPI -->|May result in| ErrRes
 ```
 
 ## Type Descriptions
 
-1. **ChatMessage**
+1. **Message**
 
-   - Basic message unit containing role and content
-   - Used in both client requests and model interactions
+   - Core message type for chat interactions
+   - Supports text and image content types
+   - Can include reasoning and tool call information
 
-2. **ChatRequest**
+2. **ImageGenerationParams**
 
-   - Primary interface for client-server communication
-   - Contains array of messages and configuration options
+   - Parameters for image generation requests
+   - Includes prompt, size, and optional settings
 
-3. **ModelRequestBody**
+3. **ImageGenerationResponse**
 
-   - Internal type for API requests to the model
-   - Extends ChatRequest with additional model-specific options
+   - Response from image generation API
+   - Contains base64 encoded image and revised prompt
 
-4. **ModelConfig**
+4. **StreamChunk**
 
-   - Configuration interface for model endpoints
-   - Contains API credentials and URLs
+   - Streaming response format for chat
+   - Contains incremental updates and usage stats
 
-5. **ErrorResponse**
+5. **ChatError**
    - Standardized error response format
-   - Used across all API endpoints
+   - Used across both chat and image endpoints
 
 ## Usage in Routes
 
-The types are primarily used in the chat route (`/api/chat`):
+The types are used in two main routes:
 
-- Request body is validated against `ChatRequest`
-- Transformed into `ModelRequestBody` for API calls
-- Errors are formatted using `ErrorResponse`
-- Model configuration is managed via `ModelConfig`
+1. `/api/chat`
+
+   - Handles chat interactions with streaming support
+   - Uses Message type for request/response
+   - Returns StreamChunk for incremental updates
+
+2. `/api/images`
+   - Handles image generation requests
+   - Uses ImageGenerationParams for requests
+   - Returns ImageGenerationResponse with generated images

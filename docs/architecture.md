@@ -19,13 +19,19 @@ graph TB
 
     subgraph Server ["Server (Fastify)"]
         API[API Routes]
+        ChatAPI["/api/chat"]
+        ImagesAPI["/api/images"]
         Middleware[Middleware]
         LibUtils[Utility Functions]
         DB[(PostgreSQL)]
         Cache[(Redis)]
 
-        API --> Middleware
-        API --> LibUtils
+        API --> ChatAPI
+        API --> ImagesAPI
+        ChatAPI --> Middleware
+        ImagesAPI --> Middleware
+        ChatAPI --> LibUtils
+        ImagesAPI --> LibUtils
         LibUtils --> DB
         LibUtils --> Cache
     end
@@ -37,16 +43,18 @@ graph TB
     end
 
     Client --"HTTP/API Requests"--> Server
-    Server --"JSON Responses"--> Client
+    Server --"JSON/SSE Responses"--> Client
     Assets --"Static Files"--> Client
 
     classDef clientNode fill:#e1f5fe,stroke:#01579b
     classDef serverNode fill:#e8f5e9,stroke:#1b5e20
     classDef assetNode fill:#fff3e0,stroke:#e65100
+    classDef apiNode fill:#f3e5f5,stroke:#4a148c
 
     class UI,Pages,Hooks,State clientNode
     class API,Middleware,LibUtils,DB,Cache serverNode
     class Public,Images,Styles assetNode
+    class ChatAPI,ImagesAPI apiNode
 ```
 
 ## Component Interactions
