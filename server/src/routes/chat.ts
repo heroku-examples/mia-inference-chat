@@ -83,7 +83,7 @@ export const chatRoute: FastifyPluginAsync = async fastify => {
           fastify.log.error(errorData, 'Error from model');
           return reply.status(response.status).send({
             error: 'Failed to fetch from model',
-            details: errorData.error,
+            details: errorData.error.message,
           });
         }
 
@@ -94,7 +94,8 @@ export const chatRoute: FastifyPluginAsync = async fastify => {
         return response.body;
       } catch (error) {
         request.log.error(error, 'Stream error');
-        return reply.status(500).send({ error: 'Internal server error', details: error });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        return reply.status(500).send({ error: 'Internal server error', details: errorMessage });
       }
     }
   );
