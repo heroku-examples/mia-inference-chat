@@ -220,7 +220,7 @@ const Chat: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className='chat-message max-w-[90%] px-4 py-3 rounded-2xl bg-heroku-purple text-white'>
+                  <div className='chat-message max-w-[90%] px-4 py-3 rounded-2xl bg-heroku-purple-30 text-white'>
                     {message.content}
                   </div>
                 )}
@@ -278,7 +278,7 @@ const Chat: React.FC = () => {
                   <button
                     type='submit'
                     disabled={!input.trim()}
-                    className='rounded-xl bg-heroku-purple p-3 text-white hover:bg-heroku-dark focus:outline-none focus:ring-2 focus:ring-heroku-purple disabled:opacity-50'
+                    className='rounded-xl bg-heroku-purple-30 p-3 text-white hover:bg-heroku-purple-20 focus:outline-none focus:ring-2 focus:ring-heroku-purple-30 disabled:opacity-50'
                     title='Submit your question'
                   >
                     <PaperAirplaneIcon className='h-5 w-5' />
@@ -326,7 +326,7 @@ const Chat: React.FC = () => {
                           onChange={e => setUseReasoning(e.target.checked)}
                           disabled={isLoading || selectedModel !== 'claude-3-7-sonnet'}
                         />
-                        <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-heroku-purple"></div>
+                        <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-heroku-purple-30"></div>
                       </div>
                       <span className='ml-2 text-xs font-medium'>Reasoning</span>
                     </label>
@@ -336,7 +336,7 @@ const Chat: React.FC = () => {
                       <select
                         value={aspectRatio}
                         onChange={e => setAspectRatio(e.target.value)}
-                        className='text-xs rounded-md border-gray-300 shadow-sm focus:border-heroku-purple focus:ring-heroku-purple bg-transparent py-1 pl-2 pr-8'
+                        className='text-xs rounded-md border-gray-300 shadow-sm focus:border-heroku-purple-30 focus:ring-heroku-purple-30 bg-transparent py-1 pl-2 pr-8'
                       >
                         {ASPECT_RATIOS.map(ratio => (
                           <option key={ratio.value} value={ratio.value}>
@@ -349,21 +349,21 @@ const Chat: React.FC = () => {
                         value={negativePrompt}
                         onChange={e => setNegativePrompt(e.target.value)}
                         placeholder='Negative prompt'
-                        className='text-xs rounded-md border-gray-300 shadow-sm focus:border-heroku-purple focus:ring-heroku-purple bg-transparent py-1 pl-2 pr-2 w-48'
+                        className='text-xs rounded-md border-gray-300 shadow-sm focus:border-heroku-purple-30 focus:ring-heroku-purple-30 bg-transparent py-1 pl-2 pr-2 w-48'
                       />
                       <input
                         type='number'
                         value={seed}
                         onChange={e => setSeed(parseInt(e.target.value, 10))}
                         placeholder='Seed'
-                        className='text-xs rounded-md border-gray-300 shadow-sm focus:border-heroku-purple focus:ring-heroku-purple bg-transparent py-1 pl-2 pr-2 w-24'
+                        className='text-xs rounded-md border-gray-300 shadow-sm focus:border-heroku-purple-30 focus:ring-heroku-purple-30 bg-transparent py-1 pl-2 pr-2 w-24'
                       />
                     </>
                   )}
                   <select
                     value={selectedModel}
                     onChange={e => setSelectedModel(e.target.value as ModelType)}
-                    className='text-xs rounded-md border-gray-300 shadow-sm focus:border-heroku-purple focus:ring-heroku-purple bg-transparent py-1 pl-2 pr-8'
+                    className='text-xs rounded-md border-gray-300 shadow-sm focus:border-heroku-purple-30 focus:ring-heroku-purple-30 bg-transparent py-1 pl-2 pr-8'
                     disabled={isLoading}
                   >
                     {MODELS.map(model => (
