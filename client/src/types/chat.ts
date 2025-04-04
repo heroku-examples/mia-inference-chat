@@ -17,7 +17,7 @@ export type ModelType = 'claude-3-7-sonnet' | 'claude-3-5-sonnet-latest' | 'stab
 
 interface BaseImageRequest {
   prompt: string;
-  size: string;
+  aspect_ratio: string;
   negative_prompt?: string;
   seed?: number;
 }

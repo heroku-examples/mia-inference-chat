@@ -25,7 +25,7 @@ export const imagesRoute: FastifyPluginAsync = async fastify => {
       },
     },
     async (request, reply) => {
-      const { prompt, size, negative_prompt, seed, model } = request.body;
+      const { prompt, aspect_ratio, negative_prompt, seed, model } = request.body;
 
       const modelConfig = getModel(model);
 
@@ -37,7 +37,7 @@ export const imagesRoute: FastifyPluginAsync = async fastify => {
         model: model,
         prompt,
         output_format: 'png',
-        size,
+        aspect_ratio,
         negative_prompt,
         seed,
       };

@@ -1,6 +1,6 @@
 export interface ImageRequest {
   prompt: string;
-  size: string;
+  aspect_ratio: string;
   negative_prompt?: string;
   seed?: number;
   model: string;

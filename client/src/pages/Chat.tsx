@@ -33,18 +33,6 @@ const ASPECT_RATIOS = [
   { value: '5:4', label: 'Classic Screen (5:4)' },
 ];
 
-const ASPECT_RATIO_SIZES = {
-  '16:9': '1344x768',
-  '1:1': '1024x1024',
-  '21:9': '1536x640',
-  '9:16': '768x1344',
-  '9:21': '640x1536',
-  '3:2': '1216x832',
-  '2:3': '832x1216',
-  '4:5': '896x1088',
-  '5:4': '1088x896',
-} as const;
-
 const Chat: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<ModelType>('claude-3-7-sonnet');
   const [useReasoning, setUseReasoning] = useState(false);
@@ -131,7 +119,7 @@ const Chat: React.FC = () => {
         const params: ImageGenerationParams = {
           model: 'stable-image-ultra',
           prompt: input,
-          size: ASPECT_RATIO_SIZES[aspectRatio as keyof typeof ASPECT_RATIO_SIZES],
+          aspect_ratio: aspectRatio,
           ...(seed ? { seed } : {}),
           ...(negativePrompt ? { negative_prompt: negativePrompt } : {}),
         };
