@@ -262,14 +262,14 @@ const Chat: React.FC = () => {
                       ? 'Describe the image you want to generate...'
                       : 'Ask me anything...'
                   }
-                  className='flex-1 rounded-xl border-0 bg-gray-100 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-heroku-purple disabled:bg-gray-50 disabled:text-gray-500'
+                  className='flex-1 rounded-xl border-0 bg-gray-100 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-heroku-purple-30 disabled:bg-gray-50 disabled:text-gray-500'
                   disabled={isLoading}
                 />
                 {isLoading ? (
                   <button
                     type='button'
                     onClick={stop}
-                    className='rounded-xl bg-gray-100 p-3 text-gray-500 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-heroku-purple'
+                    className='rounded-xl bg-gray-100 p-3 text-gray-500 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-heroku-purple-30'
                     title='Stop generating'
                   >
                     <StopIcon className='h-5 w-5' />
