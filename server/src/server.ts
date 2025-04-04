@@ -6,6 +6,7 @@ import fastifyStatic from '@fastify/static';
 import fastifyRateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 import { chatRoute } from './routes/chat.js';
+import { imagesRoute } from './routes/images.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -35,6 +36,9 @@ fastify.register(fastifyStatic, {
 
 // Register chat route with rate limiting
 fastify.register(chatRoute);
+
+// Register images route with rate limiting
+fastify.register(imagesRoute);
 
 // Run the server
 const start = async () => {

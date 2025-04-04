@@ -1,6 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { Message, ChatError, StreamChunk, UseCustomChatProps } from '@/types/chat';
 
+const filterMessages = (messages: Message[]) => {
+  return messages.filter(
+    msg => msg.type !== 'image' && msg.role !== 'agent' && msg.content.trim() !== ''
+  );
+};
+
 export function useCustomChat({ model, reasoning, agents, historyLimit = 6 }: UseCustomChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -40,9 +46,7 @@ export function useCustomChat({ model, reasoning, agents, historyLimit = 6 }: Us
 
     try {
       // Filter out agent messages when sending to server
-      const filteredMessages = [...previousMessages, userMessage].filter(
-        msg => msg.role !== 'agent' || msg.content.trim() !== ''
-      );
+      const filteredMessages = filterMessages([...previousMessages, userMessage]);
       const recentMessages = filteredMessages.slice(-historyLimit);
 
       const response = await fetch('/api/chat', {
@@ -254,5 +258,6 @@ export function useCustomChat({ model, reasoning, agents, historyLimit = 6 }: Us
     stop,
     reload,
     setMessages: clearMessages,
+    setInput,
   };
 }

@@ -9,7 +9,8 @@ import { LoadingDots } from '@/components/LoadingDots';
 import { AgentToggle } from '@/components/AgentToggle';
 import { AGENTS } from '@/constants/agents';
 import { useCustomChat } from '@/hooks/useCustomChat';
-import type { AgentType, ModelType, Message } from '@/types/chat';
+import { useImageGeneration } from '@/hooks/useImageGeneration';
+import type { AgentType, ModelType, Message, ImageGenerationParams } from '@/types/chat';
 import { CollapsibleReasoning } from '@/components/CollapsibleReasoning';
 import { CollapsibleToolExecution } from '@/components/CollapsibleToolExecution';
 import { markdownComponents } from '../constants/markdownComponents';
@@ -17,7 +18,32 @@ import { markdownComponents } from '../constants/markdownComponents';
 const MODELS: { id: ModelType; name: string }[] = [
   { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet' },
   { id: 'claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet' },
+  { id: 'stable-image-ultra', name: 'Stability Image Ultra' },
 ];
+
+const ASPECT_RATIOS = [
+  { value: '1:1', label: 'Square (1:1)' },
+  { value: '16:9', label: 'Landscape HD (16:9)' },
+  { value: '21:9', label: 'Ultrawide (21:9)' },
+  { value: '9:16', label: 'Portrait HD (9:16)' },
+  { value: '9:21', label: 'Portrait Ultrawide (9:21)' },
+  { value: '3:2', label: 'Classic Photo (3:2)' },
+  { value: '2:3', label: 'Portrait Photo (2:3)' },
+  { value: '4:5', label: 'Portrait Social (4:5)' },
+  { value: '5:4', label: 'Classic Screen (5:4)' },
+];
+
+const ASPECT_RATIO_SIZES = {
+  '16:9': '1344x768',
+  '1:1': '1024x1024',
+  '21:9': '1536x640',
+  '9:16': '768x1344',
+  '9:21': '640x1536',
+  '3:2': '1216x832',
+  '2:3': '832x1216',
+  '4:5': '896x1088',
+  '5:4': '1088x896',
+} as const;
 
 const Chat: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<ModelType>('claude-3-7-sonnet');
@@ -25,20 +51,37 @@ const Chat: React.FC = () => {
   const [selectedAgents, setSelectedAgents] = useState<AgentType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Image generation state
+  const [seed, setSeed] = useState<number>(0);
+  const [aspectRatio, setAspectRatio] = useState('1:1');
+  const [negativePrompt, setNegativePrompt] = useState('');
+
   const {
     messages,
     input,
     handleInputChange,
     handleSubmit,
-    error,
-    status,
+    error: chatError,
+    status: chatStatus,
     stop,
     reload,
     setMessages,
+    setInput,
   } = useCustomChat({
     model: selectedModel,
     reasoning: useReasoning,
     agents: selectedAgents,
+  });
+
+  const {
+    generateImage,
+    status: imageStatus,
+    error: imageError,
+  } = useImageGeneration({
+    onSuccess: newMessages => {
+      setMessages(prev => [...prev, ...newMessages]);
+      setInput('');
+    },
   });
 
   useEffect(() => {
@@ -48,8 +91,8 @@ const Chat: React.FC = () => {
   }, [selectedModel]);
 
   useEffect(() => {
-    setIsLoading(status === 'loading');
-  }, [status]);
+    setIsLoading(chatStatus === 'loading' || imageStatus === 'loading');
+  }, [chatStatus, imageStatus]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -65,17 +108,52 @@ const Chat: React.FC = () => {
   };
 
   const handleRetry = () => {
-    if (status === 'error') {
+    if (chatStatus === 'error') {
       void reload();
     }
   };
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   useEffect(() => {
-    const scrollToBottom = () => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
     scrollToBottom();
   }, [messages]);
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLoading || !input.trim()) return;
+    setIsLoading(true);
+
+    try {
+      if (selectedModel === 'stable-image-ultra') {
+        const params: ImageGenerationParams = {
+          model: 'stable-image-ultra',
+          prompt: input,
+          size: ASPECT_RATIO_SIZES[aspectRatio as keyof typeof ASPECT_RATIO_SIZES],
+          ...(seed ? { seed } : {}),
+          ...(negativePrompt ? { negative_prompt: negativePrompt } : {}),
+        };
+        await generateImage(params);
+      } else {
+        await handleSubmit();
+      }
+      setTimeout(scrollToBottom, 100);
+    } catch (error) {
+      console.error('Error submitting form:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoading) {
+      scrollToBottom();
+    }
+  }, [isLoading]);
+
+  const error = chatError || imageError;
 
   return (
     <div className='h-[calc(100vh-3rem)] flex items-center justify-center p-4'>
@@ -121,6 +199,13 @@ const Chat: React.FC = () => {
                         </ReactMarkdown>
                       ) : (
                         <div className='whitespace-pre-wrap'>{message.content}</div>
+                      )}
+                      {message.type === 'image' && message.image_url && (
+                        <img
+                          src={message.image_url}
+                          alt='Generated'
+                          className='mt-4 rounded-lg shadow-lg max-w-full h-auto'
+                        />
                       )}
                     </div>
                   </div>
@@ -177,49 +262,41 @@ const Chat: React.FC = () => {
             <div ref={messagesEndRef} />
           </div>
           <div className='border-t bg-white p-4 space-y-4'>
-            <form
-              onSubmit={async e => {
-                e.preventDefault();
-                if (isLoading) return;
-                setIsLoading(true);
-                try {
-                  await handleSubmit();
-                } catch (error) {
-                  console.error('Error submitting form:', error);
-                } finally {
-                  setIsLoading(false);
-                }
-              }}
-              className='flex gap-3'
-            >
-              <input
-                ref={inputRef}
-                type='text'
-                value={input}
-                onChange={handleInputChange}
-                placeholder='Ask me anything...'
-                className='flex-1 rounded-xl border-0 bg-gray-100 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-heroku-purple disabled:bg-gray-50 disabled:text-gray-500'
-                disabled={isLoading}
-              />
-              {isLoading ? (
-                <button
-                  type='button'
-                  onClick={stop}
-                  className='rounded-xl bg-gray-100 p-3 text-gray-500 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-heroku-purple'
-                  title='Stop generating'
-                >
-                  <StopIcon className='h-5 w-5' />
-                </button>
-              ) : (
-                <button
-                  type='submit'
-                  disabled={!input.trim()}
-                  className='rounded-xl bg-heroku-purple p-3 text-white hover:bg-heroku-dark focus:outline-none focus:ring-2 focus:ring-heroku-purple disabled:opacity-50'
-                  title='Submit your question'
-                >
-                  <PaperAirplaneIcon className='h-5 w-5' />
-                </button>
-              )}
+            <form onSubmit={handleFormSubmit} className='flex flex-col gap-3'>
+              <div className='flex gap-3'>
+                <input
+                  ref={inputRef}
+                  type='text'
+                  value={input}
+                  onChange={handleInputChange}
+                  placeholder={
+                    selectedModel === 'stable-image-ultra'
+                      ? 'Describe the image you want to generate...'
+                      : 'Ask me anything...'
+                  }
+                  className='flex-1 rounded-xl border-0 bg-gray-100 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-heroku-purple disabled:bg-gray-50 disabled:text-gray-500'
+                  disabled={isLoading}
+                />
+                {isLoading ? (
+                  <button
+                    type='button'
+                    onClick={stop}
+                    className='rounded-xl bg-gray-100 p-3 text-gray-500 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-heroku-purple'
+                    title='Stop generating'
+                  >
+                    <StopIcon className='h-5 w-5' />
+                  </button>
+                ) : (
+                  <button
+                    type='submit'
+                    disabled={!input.trim()}
+                    className='rounded-xl bg-heroku-purple p-3 text-white hover:bg-heroku-dark focus:outline-none focus:ring-2 focus:ring-heroku-purple disabled:opacity-50'
+                    title='Submit your question'
+                  >
+                    <PaperAirplaneIcon className='h-5 w-5' />
+                  </button>
+                )}
+              </div>
             </form>
             <div className='flex items-center gap-4 justify-between text-xs text-gray-500'>
               <button
@@ -231,37 +308,70 @@ const Chat: React.FC = () => {
                 Clear Chat
               </button>
               <div className='flex flex-col gap-2'>
-                <div className='flex flex-wrap gap-1.5 justify-end'>
-                  {AGENTS.map(agent => (
-                    <AgentToggle
-                      key={agent.id}
-                      agent={agent}
-                      isSelected={selectedAgents.includes(agent.id)}
-                      onToggle={() => {
-                        setSelectedAgents(prev =>
-                          prev.includes(agent.id)
-                            ? prev.filter(id => id !== agent.id)
-                            : [...prev, agent.id]
-                        );
-                      }}
-                      disabled={isLoading}
-                    />
-                  ))}
-                </div>
-                <div className='flex items-center gap-3 justify-end'>
-                  <label className='inline-flex items-center cursor-pointer'>
-                    <div className='relative'>
-                      <input
-                        type='checkbox'
-                        className='sr-only peer'
-                        checked={useReasoning}
-                        onChange={e => setUseReasoning(e.target.checked)}
-                        disabled={isLoading || selectedModel !== 'claude-3-7-sonnet'}
+                {selectedModel !== 'stable-image-ultra' && (
+                  <div className='flex flex-wrap gap-1.5 justify-end'>
+                    {AGENTS.map(agent => (
+                      <AgentToggle
+                        key={agent.id}
+                        agent={agent}
+                        isSelected={selectedAgents.includes(agent.id)}
+                        onToggle={() => {
+                          setSelectedAgents(prev =>
+                            prev.includes(agent.id)
+                              ? prev.filter(id => id !== agent.id)
+                              : [...prev, agent.id]
+                          );
+                        }}
+                        disabled={isLoading}
                       />
-                      <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-heroku-purple"></div>
-                    </div>
-                    <span className='ml-2 text-xs font-medium'>Reasoning</span>
-                  </label>
+                    ))}
+                  </div>
+                )}
+                <div className='flex items-center gap-3 justify-end'>
+                  {selectedModel !== 'stable-image-ultra' && (
+                    <label className='inline-flex items-center cursor-pointer'>
+                      <div className='relative'>
+                        <input
+                          type='checkbox'
+                          className='sr-only peer'
+                          checked={useReasoning}
+                          onChange={e => setUseReasoning(e.target.checked)}
+                          disabled={isLoading || selectedModel !== 'claude-3-7-sonnet'}
+                        />
+                        <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-heroku-purple"></div>
+                      </div>
+                      <span className='ml-2 text-xs font-medium'>Reasoning</span>
+                    </label>
+                  )}
+                  {selectedModel === 'stable-image-ultra' && (
+                    <>
+                      <select
+                        value={aspectRatio}
+                        onChange={e => setAspectRatio(e.target.value)}
+                        className='text-xs rounded-md border-gray-300 shadow-sm focus:border-heroku-purple focus:ring-heroku-purple bg-transparent py-1 pl-2 pr-8'
+                      >
+                        {ASPECT_RATIOS.map(ratio => (
+                          <option key={ratio.value} value={ratio.value}>
+                            {ratio.label}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type='text'
+                        value={negativePrompt}
+                        onChange={e => setNegativePrompt(e.target.value)}
+                        placeholder='Negative prompt'
+                        className='text-xs rounded-md border-gray-300 shadow-sm focus:border-heroku-purple focus:ring-heroku-purple bg-transparent py-1 pl-2 pr-2 w-48'
+                      />
+                      <input
+                        type='number'
+                        value={seed}
+                        onChange={e => setSeed(parseInt(e.target.value, 10))}
+                        placeholder='Seed'
+                        className='text-xs rounded-md border-gray-300 shadow-sm focus:border-heroku-purple focus:ring-heroku-purple bg-transparent py-1 pl-2 pr-2 w-24'
+                      />
+                    </>
+                  )}
                   <select
                     value={selectedModel}
                     onChange={e => setSelectedModel(e.target.value as ModelType)}

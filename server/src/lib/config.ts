@@ -1,9 +1,9 @@
+import { ModelConfig } from '../types/shared.js';
+
 interface Config {
+  system_prompt: string;
   models: {
-    [key: string]: {
-      INFERENCE_URL: string;
-      API_KEY: string;
-    };
+    [key: string]: ModelConfig;
   };
   tools: {
     [key: string]: {
@@ -20,14 +20,21 @@ interface Config {
 }
 
 export const config: Config = {
+  system_prompt:
+    process.env.SYSTEM_PROMPT ||
+    'You are a helpful assistant that can answer questions and help with tasks.',
   models: {
     'claude-3-5-sonnet-latest': {
-      INFERENCE_URL: process.env.INFERENCE_3_5_URL || 'https://localhost:3000/v1/chat',
+      INFERENCE_URL: process.env.INFERENCE_3_5_URL || 'https://us.inference.heroku.com',
       API_KEY: process.env.INFERENCE_3_5_KEY || 'inf-1234567890',
     },
     'claude-3-7-sonnet': {
-      INFERENCE_URL: process.env.INFERENCE_3_7_URL || 'https://localhost:3000/v1/chat',
+      INFERENCE_URL: process.env.INFERENCE_3_7_URL || 'https://us.inference.heroku.com',
       API_KEY: process.env.INFERENCE_3_7_KEY || 'inf-1234567890',
+    },
+    'stable-image-ultra': {
+      DIFFUSION_URL: process.env.DIFFUSION_URL || 'https://us.inference.heroku.com',
+      API_KEY: process.env.DIFFUSION_KEY || 'inf-1234567890',
     },
   },
   tools: {

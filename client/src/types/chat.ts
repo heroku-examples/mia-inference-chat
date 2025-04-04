@@ -13,12 +13,34 @@ export type Agent = {
   icon: React.ElementType;
 };
 
-export type ModelType = 'claude-3-7-sonnet' | 'claude-3-5-sonnet-latest';
+export type ModelType = 'claude-3-7-sonnet' | 'claude-3-5-sonnet-latest' | 'stable-image-ultra';
+
+interface BaseImageRequest {
+  prompt: string;
+  size: string;
+  negative_prompt?: string;
+  seed?: number;
+}
+
+export interface ImageGenerationParams extends BaseImageRequest {
+  model: 'stable-image-ultra';
+}
+
+export interface ImageGenerationResponse {
+  data: {
+    b64_json: string;
+    revised_prompt: string;
+  }[];
+}
+
 export type MessageRole = 'user' | 'assistant' | 'agent';
+export type MessageType = 'text' | 'image';
 
 export interface Message {
   role: MessageRole;
   content: string;
+  type?: MessageType;
+  image_url?: string;
   reasoning?: {
     thinking: string;
   };

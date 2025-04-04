@@ -1,11 +1,12 @@
 import { FastifyPluginAsync, FastifyRequest } from 'fastify';
-import { config, getModel, getTool } from '../lib/config.js';
+import { getModel } from '../lib/config.js';
 import { RateLimitOptions, errorResponseBuilderContext } from '@fastify/rate-limit';
-import { ChatRequest, ChatRequestBody, ErrorResponse } from '../types/chat.js';
+import { ErrorResponse } from '../types/shared.js';
+import { ImageRequest, ImageRequestBody } from '../types/images.js';
 
-export const chatRoute: FastifyPluginAsync = async fastify => {
-  fastify.post<{ Body: ChatRequest }>(
-    '/api/chat',
+export const imagesRoute: FastifyPluginAsync = async fastify => {
+  fastify.post<{ Body: ImageRequest }>(
+    '/api/images',
     {
       config: {
         rateLimit: {
@@ -24,7 +25,7 @@ export const chatRoute: FastifyPluginAsync = async fastify => {
       },
     },
     async (request, reply) => {
-      const { messages, model, agents, reasoning } = request.body;
+      const { prompt, size, negative_prompt, seed, model } = request.body;
 
       const modelConfig = getModel(model);
 
@@ -32,44 +33,17 @@ export const chatRoute: FastifyPluginAsync = async fastify => {
         return reply.status(400).send({ error: 'Invalid model' });
       }
 
-      const systemPrompt = config.system_prompt;
-
-      const body: ChatRequestBody = {
+      const body: ImageRequestBody = {
         model: model,
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          ...messages.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-        ],
-        stream: true,
+        prompt,
+        output_format: 'png',
+        size,
+        negative_prompt,
+        seed,
       };
 
-      if (model === 'claude-3-7-sonnet' && reasoning) {
-        body.extended_thinking = {
-          enabled: true,
-          budget_tokens: 2000,
-          include_reasoning: true,
-        };
-      }
-
-      if (agents && agents.length > 0) {
-        body.tools = agents
-          .map(agent => {
-            return getTool(agent);
-          })
-          .filter(
-            (tool): tool is { type: string; function: { name: string } } => tool !== undefined
-          );
-        body.tool_choice = 'auto';
-      }
-
       try {
-        const response = await fetch(`${modelConfig.INFERENCE_URL}/v1/chat/completions`, {
+        const response = await fetch(`${modelConfig.DIFFUSION_URL}/v1/images/generations`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -91,9 +65,10 @@ export const chatRoute: FastifyPluginAsync = async fastify => {
           return reply.status(500).send({ error: 'No response body received' });
         }
 
-        return response.body;
+        const json = await response.json();
+        return json;
       } catch (error) {
-        request.log.error(error, 'Stream error');
+        request.log.error(error, 'Error generating image');
         return reply.status(500).send({ error: 'Internal server error', details: error });
       }
     }
