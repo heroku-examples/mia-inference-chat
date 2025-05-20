@@ -8,9 +8,7 @@ interface Config {
   tools: {
     [key: string]: {
       type: string;
-      function: {
-        name: string;
-      };
+      name: string;
       runtime_params?: {
         target_app_name?: string;
         max_retries?: number;
@@ -38,57 +36,29 @@ export const config: Config = {
     },
   },
   tools: {
-    web_search: {
+    html_to_markdown: {
       type: 'heroku_tool',
-      function: {
-        name: 'search_web',
-      },
+      name: 'html_to_markdown',
     },
-    web_browsing: {
+    pdf_to_markdown: {
       type: 'heroku_tool',
-      function: {
-        name: 'web_browsing_multi_page',
-      },
+      name: 'pdf_to_markdown',
     },
     code_exec_python: {
       type: 'heroku_tool',
-      function: {
-        name: 'code_exec_python',
-      },
-      runtime_params: {
-        target_app_name: process.env.PYTHON_RUNNER || 'mia-demo-python-runner',
-        max_retries: +(process.env.RUNNER_MAX_RETRIES || 5),
-      },
+      name: 'code_exec_python',
     },
     code_exec_ruby: {
       type: 'heroku_tool',
-      function: {
-        name: 'code_exec_ruby',
-      },
-      runtime_params: {
-        target_app_name: process.env.RUBY_RUNNER || 'mia-demo-ruby-runner',
-        max_retries: +(process.env.RUNNER_MAX_RETRIES || 5),
-      },
+      name: 'code_exec_ruby',
     },
     code_exec_node: {
       type: 'heroku_tool',
-      function: {
-        name: 'code_exec_node',
-      },
-      runtime_params: {
-        target_app_name: process.env.NODE_RUNNER || 'mia-demo-node-runner',
-        max_retries: +(process.env.RUNNER_MAX_RETRIES || 5),
-      },
+      name: 'code_exec_node',
     },
     code_exec_go: {
       type: 'heroku_tool',
-      function: {
-        name: 'code_exec_go',
-      },
-      runtime_params: {
-        target_app_name: process.env.GO_RUNNER || 'mia-demo-go-runner',
-        max_retries: +(process.env.RUNNER_MAX_RETRIES || 5),
-      },
+      name: 'code_exec_go',
     },
   },
 };

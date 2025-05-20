@@ -79,6 +79,12 @@ const Chat: React.FC = () => {
   }, [selectedModel]);
 
   useEffect(() => {
+    if (selectedAgents.length > 0) {
+      setUseReasoning(false);
+    }
+  }, [selectedAgents]);
+
+  useEffect(() => {
     setIsLoading(chatStatus === 'loading' || imageStatus === 'loading');
   }, [chatStatus, imageStatus]);
 
@@ -324,7 +330,11 @@ const Chat: React.FC = () => {
                           className='sr-only peer'
                           checked={useReasoning}
                           onChange={e => setUseReasoning(e.target.checked)}
-                          disabled={isLoading || selectedModel !== 'claude-3-7-sonnet'}
+                          disabled={
+                            isLoading ||
+                            selectedModel !== 'claude-3-7-sonnet' ||
+                            selectedAgents.length > 0
+                          }
                         />
                         <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-heroku-purple-30"></div>
                       </div>

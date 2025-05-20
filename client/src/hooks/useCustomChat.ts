@@ -100,6 +100,15 @@ export function useCustomChat({ model, reasoning, agents, historyLimit = 6 }: Us
 
             try {
               const chunk: StreamChunk = JSON.parse(data);
+
+              // Do nothing with tool messages
+              if (
+                chunk.choices[0]?.delta?.role === 'tool' ||
+                chunk.choices[0]?.message?.role === 'tool'
+              ) {
+                continue;
+              }
+
               const content =
                 chunk.choices[0]?.delta?.content || chunk.choices[0]?.message?.content;
               const reasoningDelta =

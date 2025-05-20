@@ -32,7 +32,10 @@ export const chatRoute: FastifyPluginAsync = async fastify => {
         return reply.status(400).send({ error: 'Invalid model' });
       }
 
+      const inferenceUrl = `${modelConfig.INFERENCE_URL}/v1/chat/completions`;
+      const agentsUrl = `${modelConfig.INFERENCE_URL}/v1/agents/heroku`;
       const systemPrompt = config.system_prompt;
+      const hasAgents = agents && agents.length > 0;
 
       const body: ChatRequestBody = {
         model: model,
@@ -46,30 +49,27 @@ export const chatRoute: FastifyPluginAsync = async fastify => {
             content: msg.content,
           })),
         ],
-        stream: true,
       };
 
-      if (model === 'claude-3-7-sonnet' && reasoning) {
-        body.extended_thinking = {
-          enabled: true,
-          budget_tokens: 2000,
-          include_reasoning: true,
-        };
-      }
-
-      if (agents && agents.length > 0) {
+      if (hasAgents) {
         body.tools = agents
           .map(agent => {
             return getTool(agent);
           })
-          .filter(
-            (tool): tool is { type: string; function: { name: string } } => tool !== undefined
-          );
-        body.tool_choice = 'auto';
+          .filter((tool): tool is { type: string; name: string } => tool !== undefined);
+      } else {
+        body.stream = true;
+        if (model === 'claude-3-7-sonnet' && reasoning) {
+          body.extended_thinking = {
+            enabled: true,
+            budget_tokens: 2000,
+            include_reasoning: true,
+          };
+        }
       }
 
       try {
-        const response = await fetch(`${modelConfig.INFERENCE_URL}/v1/chat/completions`, {
+        const response = await fetch(hasAgents ? agentsUrl : inferenceUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

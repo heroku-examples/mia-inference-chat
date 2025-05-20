@@ -19,11 +19,8 @@ export interface ChatRequestBody {
   stream?: boolean;
   tools?: {
     type: string;
-    function: {
-      name: string;
-    };
+    name: string;
   }[];
-  tool_choice?: string;
   extended_thinking?: {
     enabled: boolean;
     budget_tokens: number;

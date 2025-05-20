@@ -1,7 +1,7 @@
 import React from 'react';
 export type AgentType =
-  | 'web_search'
-  | 'web_browsing'
+  | 'html_to_markdown'
+  | 'pdf_to_markdown'
   | 'code_exec_python'
   | 'code_exec_node'
   | 'code_exec_ruby'
